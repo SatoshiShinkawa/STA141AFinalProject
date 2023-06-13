@@ -1,0 +1,893 @@
+---
+title: "STA 141A Final Project"
+author: "Satoshi Shinkawa"
+date: "2023-06-01"
+output:
+  html_document: 
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+  pdf_document: default
+  word_document: default
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H')
+#install.packages("htmlwidgets")
+#library(htmlwidgets)
+```
+
+***Final Project ***
+## Abstract (Introduce Background)
+
+An overview of this project.
+Throughout history, humans have always sought to understand the complexities of the mind. Breakthroughs in this subject could result in advances in the fields of medicine. By mapping out the relationship between external stimuli and how the brain's neurons react to it would make for such a breakthrough. This project used the, "Distributed Coding of Choice, Action, and Engagement Across the Mouse Brain" to gather data from mice to produce a prediction model to estimate the relationship between stimuli and the neuron activity. The techniques used to develop such a model in this project are the creation of more simple and mutable data structures, filtering for categorical criteria, and clustering of brain areas. It is believed that left contrast of the brain in response to stimulus as well as the right contrast of the brain in response to a stimulus can help predict whether the mouse will result in a correct feedback type. Alongside this, the averages of the spikes over time, </span>
+
+*** 
+## Introduction
+
+The purpose of this project is to explore the sessions data set which contains observations recorded from mice regarding an experiment done in the article, "Distributed Coding of Choice, Action, and Engagement Across the Mouse Brain." published by Nicholas A. Steinmetz, Peter Zatka-Haas, Matteo Carandini, & Kenneth D. Harris. 4 mice were exposed to stimuli and their neurons reaction in various locations in their brain were recorded and then formatted into the sessions data set. The sessions data set is composed of 18 sessions that come in the form of lists. Within each session, there are 8 different variables. These are `mouse_name`, `brain_area`, `contrast_left`, `contrast_right`, `feedback_type`, `date_exp`, `spks` and `time`. The `mouse_name` is a variable that describes which mouse is being tested on for the given session. The `brain_area` is a variable that indicates which area of the brain is being tested for a given trial. `contrast_left` is a variable that is binary and indicates the contrast level of the left most stimulus taking values of 0, 0.25, 0.50, 1. `contrast_right` similarly indicates the contrast level of the right most stimulus also taking values of 0, 0.25, 0.50, 1. The `feedback_type` is also a binary variable indicating the feedback for each of the trials with -1 indicating failure and 1 indicating success. `spks` is a matrix that indicates the number of neuron activity spikes in the visual cortex defined using time from the time variable in bins with dimensions of trials by neurons by time bins. `time` is a vector works along side the `spks` variable that contains the centers of the time bins for the spikes. The overall objective of this project is to use this data to create a prediction model that estimates for `feedback_type`.  </span>
+
+***  
+## Background 
+
+Regarding the data, the experiment conducted on the mice was done with dates kept as records and done over time. The location of the brain and it's neurons are observed using probes and the responses to stimuli are recorded as described in the introduction. The stimuli exposed to the mice was visual stimuli in which the mice would turn it's wheel in response to it. The stimuli would either be admitted to its left side, right side, both sides, or not at all in which if a mouse responded in a correct manner, it would be rewarded with water. The target population of this project is the true coefficients that can help determine a correct response. The sampling mechanism used throughout the project is the built in sampling function provided by R-Studio to help easily gather samples from our main data. Machine learning can be used to attempt to predict with a model far superior to any model this project is capable of producing. Machine learning uses Functional Magnetic Resonance imaging (FMRi) data and stimulus as inputs in training predictive models. This can lead to making predictions about new, less obvious features of brain response patterns. If you would like to know more about this interesting topic, here are some resources:
+- Article: "Predicting the Brain Activation Pattern Associated with the Propositional Content of a Sentence: Modeling Neural Representations of Events and States" by Mitchell TM, Shinkareva SV, et al. (2008). 
+- Book: "Machine Learning in Neuroscience" by Stephen José Hanson and Sjöström P. Jesper.
+- Article: "Deep Neural Networks Reveal a Gradient in the Complexity of Neural Representations across the Ventral Stream" by Yamins DL, Hong H, et al. (2014). </span>
+
+*** 
+
+## Descriptive analysis 
+
+The descriptive analysis provides basic univariate descriptive statistics for relevant variables (mean, standard deviations, missing values, quantiles, etc.), and a few multivariate description of key variables. 
+Readers that are familiar with this topic or statistics gain basic insights of this data set, e.g., being able to generate hypotheses, spot abnormality (or the lack of), propose statistical models, evaluate the plausibility of assumptions. </span>
+
+
+In this part, the main task is to address questions in Part one.
+
+Part 1 (15 points). Exploratory data analysis. In this part, we will explore the features of the data sets in order to build our prediction model. In particular, we would like to (i) describe the data structures across sessions (e.g., number of neurons, number of trials, stimuli conditions, feedback types), (ii) explore the neural activities during each trial, (iii) explore the changes across trials, and (iv) explore homogeneity and heterogeneity across sessions and mice.
+
+**Grading criteria:**
+**To address (i), it would be best to use a table. Remember to explain what each variable represents.**
+**For (ii), (iii), and (iv), at least one figure should be included for each. Ensure that the x-axis and y-axis are clearly labeled, and provide an appropriate caption for each figure and table.**
+**Also, make sure to number them clearly for easy reference. **
+**Make sure you answered all questions in Part one. I hope you can answer those questions in order, but it's not requuied.**
+**Lastly, it's important to explain why you included those plots and how they address the questions in Part 1. This will help readers understand the significance of the data presented and how it contributes to the overall findings of the project.**
+
+I will give you an example for problem 1.
+
+The data for this project consists of eighteen sessions involving four different mice. The variables utilized in the project include `mouse_name` (the name of the mouse for specific sessions), `date_exp` (the date of the experiment), `n_brain_area` (the unique brain area involved), `n_neurons` (the number of neurons), `n_trials` (the number of trials in each session), and `success_rate` (the ratio of successful trials to the total number of trials). It is important to note that the selected data does not contain any missing values (**Table 1**).
+
+For this project, the data set contains 18 sessions of tests done to four different mice. There are ` ` variables utilized in the project. These variables are `mouse_name`, `date_exp` , `n_brain_area` , `n_neurons` , `n_trials` , `success_rate` ,  
+
+Current glm variables: contrast left, contrast right, average spikes, specific mouse feedback, 
+```{r, echo = FALSE}
+suppressWarnings(library(tidyverse))
+suppressWarnings(library(data.table))
+suppressWarnings(library(dplyr))
+suppressWarnings(library(reshape2))
+suppressWarnings(library(gridExtra))
+library(stats)
+library(nnet)
+```
+
+```{r}
+setwd("C:/Users/ultim/Downloads/STA 141A/sessions") 
+session=list()
+for(i in 1:18){
+  session[[i]]=readRDS(paste('session',i,'.rds',sep=''))
+}
+sessions <- session
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+# Summarize the information across sessions:
+# Knowing what summary we want to report, we can create a tibble:
+# All values in this function serve only as place holders
+library(tidyverse) 
+library(magrittr)   
+library(knitr) 
+library(dplyr)  
+n.session=length(session)
+
+# in library tidyverse
+
+meta <- tibble(
+  mouse_name = rep('name',n.session),
+  date_exp =rep('dt',n.session),
+  n_brain_area = rep(0,n.session),
+  n_neurons = rep(0,n.session),
+  n_trials = rep(0,n.session),
+  success_rate = rep(0,n.session)
+)
+
+
+for(i in 1:n.session){
+  tmp = session[[i]];
+  meta[i,1]=tmp$mouse_name;
+  meta[i,2]=tmp$date_exp;
+  meta[i,3]=length(unique(tmp$brain_area));
+  meta[i,4]=dim(tmp$spks[[1]])[1];
+  meta[i,5]=length(tmp$feedback_type);
+  meta[i,6]=mean(tmp$feedback_type+1)/2;
+}
+```
+
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, tab.align = "center"}
+kable(meta, format = "html", table.attr = "class='table table-striped'",digits=2) 
+```
+<p style="text-align: center;">**Table 1**. Data structure across sessions.</p>
+
+>>This table splendidly displays the name of the mouse used in which session, the date the the experiment was conducted, and the number of brain areas used in a given session. In addition to this, the number of neurons recorded in each session, the number of trials in each session, and the overall success rate in which the mice are able to correctly respond to a stimulus. The information gathered from this table is incredibly helpful with summarizing what the very large and complicated sessions data set is composed of. 
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+i.s=2 # indicator for this session
+
+i.t=1 # indicator for this trial 
+
+spk.trial = session[[i.s]]$spks[[i.t]]
+area=session[[i.s]]$brain_area
+
+# We need to first calculate the number of spikes for each neuron during this trial 
+spk.count=apply(spk.trial,1,sum)
+
+# for(i in 1:dim(spk.trial)[1]){
+#  spk.count[i]=sum(spk.trial[i,])
+# }
+
+# Next we take the average of spikes across neurons that live in the same area 
+
+# You can use tapply() or group_by() in dplyr
+
+# tapply():
+spk.average.tapply=tapply(spk.count, area, mean)
+
+
+# dplyr: 
+# To use dplyr you need to create a data frame
+tmp <- data.frame(
+  area = area,
+  spikes = spk.count
+)
+# Calculate the average by group using dplyr
+spk.average.dplyr =tmp %>%
+  group_by(area) %>%
+  summarize(mean= mean(spikes))
+
+# Wrapping up the function:
+
+average_spike_area<-function(i.t,this_session){
+  spk.trial = this_session$spks[[i.t]]
+  area= this_session$brain_area
+  spk.count=apply(spk.trial,1,sum)
+  spk.average.tapply=tapply(spk.count, area, mean)
+  return(spk.average.tapply)
+  }
+
+# Test the function
+average_spike_area(1,this_session = session[[i.s]])
+
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that we created before.
+
+# We will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+trial.summary <- as_tibble(trial.summary)
+```
+
+```{r, echo=FALSE, result = 'hide', fig.height = 4, fig.width = 5, fig.align = "center"}
+area.col=rainbow(n=n.area,alpha=0.7)
+# In base R, I usually initiate a blank plot before drawing anything on it
+plot(x=1,y=0, col='white',xlim=c(0,n.trial),ylim=c(0.5,2.2), xlab="Trials",ylab="Average spike counts", main=paste("Spikes per area in Session", i.s))
+
+
+for(i in 1:n.area){
+  lines(y=trial.summary[[i]],x=trial.summary$id,col=area.col[i],lty=2,lwd=1)
+  lines(smooth.spline(trial.summary$id, trial.summary[[i]]),col=area.col[i],lwd=3)
+  }
+legend("topright", 
+  legend = colnames(trial.summary)[1:n.area], 
+  col = area.col, 
+  lty = 1, 
+  cex = 0.8
+)
+```
+<p style="text-align: center;">**Figure 1**. Average spike count across trials in session 2.</p>
+>>This plot is helpful because it is able to show the average of each brain area in a given session changes alongside it's mean. We can observe spikes over trials in association with time grouped by brain area using this plot. We can also see that the VISpm brain area, for example, is the brain area with the highest average over all the trials. This is meaningful because this can perhaps indicate that if this brain area has a large amount of spikes, this could further determine whether the feedback type will be successful.
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE} 
+#This function is designed to extract the neurons from each session
+#takes forever to run
+neuron.extract <- function(fdbk){
+  sum.list <- list()
+  for (i in 1:18){
+    #Incorporate feedback
+    feed <- session[[i]][["feedback_type"]]   
+    #Incorporate spikes
+    spks <- session[[i]][["spks"]]
+    #Incorporate Trials
+    trial <- 1:length(feed) 
+    tmp.feed <- data.frame(feed,trial)   
+    feedFilter <- tmp.feed %>% filter(feed %in% c(fdbk))      
+    data.list <- list()   
+    tempVec <- c()   
+    brain.vec <- c(matrix(0,dim(spks[[1]])[1],1))   
+      for (r in 1:dim(spks[[1]])[1]){
+       data.list[[r]] <-  rowSums(spks[[1]])[r]/40  
+      }       
+  for (j in 2:length(spks)){         
+    for (w in 1:dim(spks[[1]])[1]){ 
+      brain.vec <- rowSums(spks[[j]])[w]/40  
+      data.list[[w]] <- c(data.list[[w]], brain.vec) 
+    }   
+  }      
+sum.list[[i]] <- data.list
+}
+return(sum.list) } 
+neuron.extract.vals <- neuron.extract(c(1,-1)) 
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+BrainArea <- c()
+
+n.session <- length(session)
+for(i in 1:n.session){
+  for(j in 1:length(session[[i]]$brain_area)){
+    BrainArea <- c(BrainArea,session[[i]]$brain_area[[j]])
+  }
+}
+length(BrainArea)
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Find all non-zero values of neuron.extract.vals for the first neuron
+hist(neuron.extract.vals[[1]][[1]], main = "Histogram of First Neuron Activation")
+placeholder <- !(neuron.extract.vals[[1]][[1]]==0)
+neuron.activity <- neuron.extract.vals[[1]][[1]][placeholder]
+#neuron.extract.vals[[1]][[1]][neuron.extract.vals[[1]][[1]]!=0]
+
+#Want the proportion of activation rates of each neuron
+neuron.activation.prop <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    temp = round(sum(!(neuron.extract.vals[[i]][[j]]==0))/length(neuron.extract.vals[[i]][[j]]),digits = 2)
+    neuron.activation.prop = c(neuron.activation.prop,temp)
+  }
+}
+#cluster by responsiveness
+#just take avg of spk count of clusters
+#spk count over time, used time
+#explain why we want more coeff 
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Finding the variance of the activation proportions
+variance.of.neurons <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    variance.of.neurons = c(variance.of.neurons, var(neuron.extract.vals[[i]][[j]]))
+  }
+}
+
+#Finding the average of the activation proportions
+average.of.neurons <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    average.of.neurons <- c(average.of.neurons, mean(neuron.extract.vals[[i]][[j]]))
+  }
+}
+
+```
+
+
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#All of the brain areas are in the vector
+length(BrainArea)
+length(neuron.activation.prop)
+
+name.brain.areas <- unique(BrainArea)
+indexVec <- c(1:length(neuron.activation.prop))
+brain.area.neuron.prop <- data.frame(BrainArea, neuron.activation.prop,indexVec)
+
+#ggplot(x = brain.area.neuron.prop$indexVec, y = brain.area.neuron.prop$neuron.activation.prop ,data = brain.area.neuron.prop, 
+#       color = as.factor(BrainArea)) +
+#       labs(x ="Index of the Length of Average Proportions" , 
+#               y = "Average Neuron Activation Proportion", 
+#              title = "Index vs. Average Neuron Activation Proportion")+
+#  geom_point(mapping = aes(x = brain.area.neuron.prop$indexVec, y = brain.area.neuron.prop$neuron.activation.prop))
+
+
+#Want to create a structure to contain the brain areas with their average activation proportion
+
+
+
+```
+
+
+```{r}
+#Function to help compare the unique brain areas to where 
+compare.brain.areas <- function(vector1,vector2){
+  comparison <- vector1 %in% vector2
+  return(any(comparison))
+}
+#Want to show which brain area is used what session
+unique.brain.area.len <-length(name.brain.areas)
+brain.area.per.session <- matrix(, nrow = n.session, ncol =unique.brain.area.len)
+colnames(brain.area.per.session) <- name.brain.areas
+rownames(brain.area.per.session) <- c(1:18)
+
+#Want to compare what the unique names to all the brain ares
+for(i in 1:n.session){
+  tempVal <- c(session[[i]]$brain_area)
+  for(j in 1:unique.brain.area.len){
+    brain.area.per.session[i,j] = compare.brain.areas(tempVal,name.brain.areas[j])
+  }
+}
+head(brain.area.per.session)
+```
+<p style="text-align: center;">**Data Frame 1**. Header of data frame of brain areas use in a given session.</p>
+>> This data frame is useful because it shows which session uses which brain area so connections can be made about comparing data over sessions by brain area. 
+
+```{r , echo=FALSE, result = 'hide', fig.height = 4, fig.width = 5, fig.align = "center"}
+#Want to show how many sessions use a given brain area
+n.brain.areas.used<- c()
+for(i in 1:unique.brain.area.len){
+  n.brain.areas.used <- c(n.brain.areas.used, sum(brain.area.per.session[,i]))
+}
+
+brain.areas.used <- data.frame(name.brain.areas,n.brain.areas.used)
+head(brain.areas.used)
+```
+<p style="text-align: center;">**Data Frame 2**. Header of data frame of brain areas use in a given session.</p>
+>>The value of this data frame is to display the most common brain areas used in all sessions which could also help make connections between sessions using brain area. 
+
+## Data integration
+
+Part 2 (15 points). Data integration. Using the findings in Part 1, we will propose an approach to combine data across trials by (i) extracting the shared patters across sessions and/or (ii) addressing the differences between sessions. The goal of this part is to enable the borrowing of information across sessions to enhance the prediction performance in Part 3.
+
+**For the course project, if students choose not to conduct any sophisticated methods for data integration, they can choose to focus on utilizing the behavioural information. For instance, they can start by recognizing the different rewarding mechanisms (0-0, equal but non-zero, unequal), the time since the start of the experiment, session IDs for the same mouse, etc.**
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#This is average spikes throughout all trials
+spk.avg <- c()
+for (i in 1:18) {
+    length.trial = length(session[[i]]$spks)
+  for (k in 1:length.trial) {
+    spk.per = session[[i]]$spks[[k]]
+    num.spk = apply(spk.per, 1, sum)
+    spk.avg = c(spk.avg, mean(num.spk))
+  }
+}
+```
+
+
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Want the proportion of activation rates of each neuron
+neuron.activation.prop <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    temp = round(sum(!(neuron.extract.vals[[i]][[j]]==0))/length(neuron.extract.vals[[i]][[j]]),digits = 2)
+    neuron.activation.prop = c(neuron.activation.prop,temp)
+  }
+}
+#cluster by responsiveness
+#just take avg of spk count of clusters
+#spk count over time, used time
+#explain why we want more coeff 
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Finding the variance of the activation proportions
+#Want the proportion of activation rates of each neuron
+neuron.activation.prop <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    temp = round(sum(!(neuron.extract.vals[[i]][[j]]==0))/length(neuron.extract.vals[[i]][[j]]),digits = 2)
+    neuron.activation.prop = c(neuron.activation.prop,temp)
+  }
+}
+variance.of.neurons <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    variance.of.neurons = c(variance.of.neurons, var(neuron.extract.vals[[i]][[j]]))
+  }
+}
+
+#Finding the average of the activation proportions
+average.of.neurons <- c()
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    average.of.neurons <- c(average.of.neurons, mean(neuron.extract.vals[[i]][[j]]))
+  }
+}
+
+```
+
+```{r, echo=FALSE, result = 'hide', fig.height = 4, fig.width = 5, fig.align = "center"}
+#Visualize the frequency of proportions
+hist(neuron.activation.prop, main = "Histogram of the Proportions", xlab = "Proportion of Neuron Activation")
+
+
+successes <- c()
+failures <-c()
+activation.totals <- data.frame(successes,failures)
+for(i in 1:length(neuron.extract.vals)){
+  for(j in 1:length(neuron.extract.vals[[i]])){
+    temp = data.frame(round(sum((neuron.extract.vals[[i]][[j]]==0))/length(neuron.extract.vals[[i]][[j]]),digits = 2),
+                      round(sum(!(neuron.extract.vals[[i]][[j]]==0))/length(neuron.extract.vals[[i]][[j]]),digits = 2))
+    activation.totals = rbind(temp)
+  }
+}
+```
+<p style="text-align: center;">**Figure 2**. Proportion of non zero neuron activation per neuron.</p>
+>> As you can see from this histogram, while there are quite a few zero neuron proportions, there are a significant number of non zero proportions. This is important because this helps us dimish the likelihood of the mice getting successful results randomly. Since they succeed more than fail, this means there are different factors affecting their success rate. 
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+n.neuron <- c(1:length(BrainArea))
+#Make data frames with brain area and average activation
+brain.area.and.neuron <- data.frame(BrainArea, neuron.activation.prop, average.of.neurons, variance.of.neurons)
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Now, we want grab a few brain areas, CA1, root, DG
+Most.Frequent.Brain.Area <- brain.area.and.neuron %>% filter(BrainArea == "ACA" | BrainArea == "root" | BrainArea == "DG")
+
+```
+
+```{r, echo=FALSE, result = 'hide', fig.height = 4, fig.width = 5, fig.align = "center"}
+#plot the 3 groups
+Most.Frequent.Brain.Area %>% ggplot(aes(x = neuron.activation.prop, y = variance.of.neurons , color = BrainArea)) +
+  geom_point()+
+  labs(title = "Grouping of Proportion and Variance of Neurons",
+       x = "Neuron Activation Proportion", y = "Variance of Neurons")
+```
+<p style="text-align: center;">**Figure 3**. Grouping of Brain area of Activation Proportion and Variance of Neurons .</p>
+>> This plot is significant because 
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Now, we want grab a few brain areas, CA1, root, DG, MOs, VISp, and CA3
+Most.Frequent.Brain.Area <- brain.area.and.neuron %>% 
+  filter(BrainArea == "ACA" | BrainArea == "root" | BrainArea == "DG" | BrainArea == "MOs" | BrainArea == "Visp" | BrainArea == "CA3") %>%
+  mutate(new.brain.prop = ((neuron.activation.prop - mean(neuron.activation.prop))^2))
+```
+
+```{r, echo=FALSE, result = 'hide', fig.height = 4, fig.width = 5, fig.align = "center" }
+#plot the 3 groups
+Most.Frequent.Brain.Area %>% ggplot(aes(x = neuron.activation.prop, y = new.brain.prop, color = BrainArea)) +
+  geom_point()+
+  labs(title = "Grouping of Proportion vs. Sum of Squares of Neurons",
+       x = "Neuron Activation Proportion", y = "Sum Squares of Neurons")
+```
+<p style="text-align: center;">**Figure 4**. Grouping of Proportions vs. Sum of Squares of Proportions .</p>
+>> This plot is significant because by comparing the proportions of all the data, we can see how it compares to the sum of squares of the neurons. It's interesting because it follows a parabola seemingly perfectly which is unusual because there should be some deviations. This plot could prove the homogeneity of the activation proportion variable.  
+
+## Predictive modeling
+
+Part 3 (15 points). Model training and prediction. Finally, we will build a prediction model to predict the outcome (i.e., feedback types). The performance will be evaluated on two test sets of 100 trials randomly selected from Session 1 and Session 18, respectively. The test sets will be released on the day of submission when you need to evaluate the performance of your model.
+
+Using method like logistic regression, SVM, etc for prediction. 
+
+## Prediction performance on the test sets
+
+
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Read in test data
+setwd("C:/Users/ultim/Downloads/STA 141A/test")
+test.data <- list()
+for(i in 1:2){
+  test.data[[i]] = readRDS(paste('./test',i,'.rds',sep=''))
+}
+
+```
+
+Using confusion matrix and indicators we discussed in Discussion: Model comparison (5/23/2023). 
+
+Review: 
+Confusion Matrix: A confusion matrix provides a tabular summary of classifier predictions compared to actual class labels. It includes true positives, true negatives, false positives, and false negatives. From the confusion matrix, various performance metrics can be derived, such as accuracy, precision, recall, and F1-score.
+
+Precision: Precision measures the proportion of correctly predicted positive instances out of all instances predicted as positive. It quantifies the classifier’s ability to avoid false positives.
+
+Recall: Recall (also known as sensitivity or true positive rate) calculates the proportion of correctly predicted positive instances out of all actual positive instances. It represents the classifier’s ability to identify all positive cases.
+
+F1-score: The F1-score combines precision and recall into a single metric. It provides a balanced measure of a classifier’s performance by considering both false positives and false negatives.
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#gathering data of feedback type, contrast left, and contrast right
+feed <- c()
+conL <- c()
+conR <- c()
+
+
+for (i in 1:length(session)){
+  
+  conL <- append(conL, session[[i]][["contrast_left"]])
+  conR <- append(conR, session[[i]][["contrast_right"]])
+  feed <- append(feed, session[[i]][["feedback_type"]] == 1)
+
+}
+big.data.frame <- data.frame(feed, conL, conR)
+
+len.difference <- length(neuron.activation.prop) - dim(big.data.frame)[1]
+feed <- c(feed, rep(NA, len.difference))
+conL <- c(conL, rep(NA, len.difference))
+conR <- c(conR, rep(NA, len.difference))
+
+len.difference2 <- length(neuron.activation.prop) - length(spk.avg)
+spk.avg <- c(spk.avg, rep(NA, len.difference2))
+
+len.difference3 <- length(neuron.activation.prop) - length(average.of.neurons)
+average.of.neurons <- c(average.of.neurons, rep(NA, len.difference3))
+variance.of.neurons <- c(variance.of.neurons, rep(NA, len.difference3))
+ 
+big.data.frame <- data.frame(feed, conL, conR, neuron.activation.prop, spk.avg,average.of.neurons,variance.of.neurons)
+
+
+#Might need to take samples to effectively use test data
+
+```
+
+```{r}
+#Format Data
+selected.vars <- c("feed","conL","conR", "neuron.activation.prop", "spk.avg","average.of.neurons","variance.of.neurons")
+data.for.pca <- big.data.frame %>% 
+  select(all_of(selected.vars)) %>%
+  na.omit()
+
+#Perform PCA
+pca.result <- prcomp(data.for.pca, scale = TRUE)
+
+# Print the summary of the PCA
+summary(pca.result)
+
+# Access the principal components
+pca.result$rotation  # Loadings (correlations between variables and PCs)
+pca.result$x  # PC scores (transformed data)
+
+# Explained variance
+variance.explained <- pca.result$sdev^2 / sum(pca.result$sdev^2)
+cumulative.variance <- cumsum(variance.explained)
+
+# Plot the scree plot
+#scree.plot <- ggplot(data.frame(PC = 1:length(variance.explained), 
+#                                VarianceExplained = variance.explained), 
+#                     aes(x = PC, y = VarianceExplained)) +
+#  geom_bar(stat = "identity", fill = "steelblue") +
+#  geom_line(aes(x = PC, y = cumulative.variance), color = "red", size = 1) +
+#  labs(x = "Principal Components", y = "Variance Explained") +
+#  theme_minimal()
+#print(scree_plot)
+
+plot(pca.result, xlab = "PCAs")
+#plot(pca.result, type = "1")
+```
+<p style="text-align: center;">**Figure 5**. PCA of big.data.frame, the test data.  .</p>
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+# Extract the principal components
+pc.scores <- as.data.frame(pca.result$x)  # Principal component scores
+
+# Assuming your response variable is called "response" and there are other predictors
+
+# Combine the response variable and principal components
+#Need to amend rows again
+#PC1 <- c(pc.scores[1])
+#PC2 <- c(pc.scores[2])
+#PC3 <- c(pc.scores[3])
+#PC4 <- c(pc.scores[4])
+#PC5 <- c(pc.scores[5])
+#PC6 <- c(pc.scores[6])
+#data.pca <- data.frame(PC1,PC2,PC3,PC4)
+#quick.sample <- sample(big.data.frame$feed,length(data.pca[1]))
+#data.pca <- cbind(quick.sample,data.pca)
+#test.df <- data.frame(test.data$feed)
+
+
+# Fit multinomial regression
+#model <- glm(big.data.frame$feed~ mean(PC1) + mean(PC2) +mean(PC3) +mean(PC4) +mean(PC5)+mean(PC6))
+
+#library(nnet)
+#model <- multinom(quick.sample ~ data.pca[[1]] +  data.pca[2] + data.pca[3] , data = data.pca)
+#summary(model)  # View model summary
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Creating a glm of contrast left + contrast right vs feedback type
+big.data.glm <- glm(big.data.frame$feed~big.data.frame$conL+big.data.frame$conR + big.data.frame$neuron.activation.prop + big.data.frame$spk.avg,
+                    data = big.data.frame,
+                    family = "binomial")
+
+#Obtain Estimates and their Standard Errors
+parameter.estimates <- summary(big.data.glm)$coef[,1:2]
+cat("Parameter Estimates and Standard Errors:\n")
+print(parameter.estimates)
+
+#Extract the Predictor Variable from the Test Data
+test.feedback <- data.frame()
+
+#Predict the feedback using test data
+prediction <- predict(big.data.glm, newdata = data.frame(test.data[[1]]$feedback_type), type = "response")
+
+#make them binary for the confusion matrix
+predict.binary <- ifelse(prediction > 0.5,"-1","1")
+
+predict.binary.sample <- sample(predict.binary, 100)
+
+#create confusion matrix
+confusion.matrix <- table(Actual = test.data[[1]]$feedback_type, Predicted = predict.binary.sample)
+
+#print confusion matrix
+print(confusion.matrix)
+```
+
+```{r}
+misclassification <- (1- (sum(diag(confusion.matrix))/(sum(confusion.matrix))))
+
+cat("Misclassification Error:", misclassification, "\n")
+```
+>>My misclassification error seems pretty high so that indicates that my prediction model does not predict for feedback type very well. 
+
+```{r}
+#Now let's calculate the accuracy
+accuracy <- sum(diag(confusion.matrix)) / sum(confusion.matrix)
+print(accuracy)
+
+```
+## Discussion 
+Based on what we have seen in this project, the prediction model is unsuitable in predicting feedback type well. This can be due to choosing bad coefficients and colinearity between two of my variables. 
+*** 
+## Acknowledgement {-}
+Victor Lu, Ben Weisner, Alexander Lin, Sam and myself have worked together throughout the entirety and derived ideas from each other. I also utilized Chatgpt for errors and formatting. 
+
+
+## Reference {-}
+
+Steinmetz, N.A., Zatka-Haas, P., Carandini, M. et al. Distributed coding of choice, action and engagement across the mouse brain. Nature 576, 266–273 (2019). https://doi.org/10.1038/s41586-019-1787-x
+
+OpenAI. "ChatGPT: Large-scale Language Model for Conversational AI." Version 3.5 (2021). Retrieved from https://openai.com
+
+*** 
+## Session info {-}
+
+
+```{r}
+sessionInfo()
+```
+*** 
+
+## Other {-}
+**This category is for extra codes and other interesting things I found in the project, but was unable to utilize or couldn't utilize.**
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#All of the brain areas are in the vector
+length(BrainArea)
+length(neuron.activation.prop)
+
+name.brain.areas <- unique(BrainArea)
+indexVec <- c(1:length(neuron.activation.prop))
+brain.area.neuron.prop <- data.frame(BrainArea, neuron.activation.prop,indexVec)
+
+ggplot(x = brain.area.neuron.prop$indexVec, y = brain.area.neuron.prop$neuron.activation.prop ,data = brain.area.neuron.prop, 
+       color = as.factor(BrainArea)) +
+       labs(x ="Index of the Length of Average Proportions" , 
+               y = "Average Neuron Activation Proportion", 
+              title = "Index vs. Average Neuron Activation Proportion")+
+  geom_point(mapping = aes(x = brain.area.neuron.prop$indexVec, y = brain.area.neuron.prop$neuron.activation.prop))
+
+
+#Want to create a structure to contain the brain areas with their average activation proportion
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Testing if I can get a specific sessions brain areas
+session.1.brain.area <-c()
+n.sessions <- length(sessions)
+for(i in 1:length(n.sessions)){
+  for(j in 1:length(session[[i]]$brain_area))
+    session.1.brain.area <-c(session.1.brain.area,session[[i]]$brain_area[[j]])
+}
+
+#Function to help compare the unique brain areas to where 
+compare.brain.areas <- function(vector1,vector2){
+  comparison <- vector1 %in% vector2
+  return(any(comparison))
+}
+
+compare.brain.areas(session.1.brain.area,name.brain.areas[1])
+
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#finds the densities of all neurons in each trial, also takes a while
+#Actually want non zero neurons because the 0 ones aren't helpful
+#allDenList <- list() 
+#listCount <- list()
+#for (i in 1:18){   
+#  for (j in 1:length(neuron.extract.vals[[i]])){
+#        allDenList[[listCount]] <- density(!neuron.extract.vals[[i]][[j]]==0)     
+#        listCount = listCount + 1
+#        }
+#  } 
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Let's sample all the densities
+#set.seed(1)
+#densitySubset <- sample(allDenList, size = 100, replace = FALSE)
+#length(densitySubset)
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Need to turn my samples into data frames for ggplot
+#densityX <- c()
+#densityY <- c()
+#for(i in 1:length(densitySubset)){
+ # densityX <- c(densityX,densitySubset[[i]]$x)
+#  densityY <- c(densityY,densitySubset[[i]]$y)
+#}
+#densitySample <- data.frame(densityX,densityY)                                                                                
+
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Try to plot the densities to see what they look like
+#plot(densitySubset[[1]], main = "Density Function of Sample 1")
+#plot(densitySubset[[2]], main = "Density Function of Sample 2")
+#plot(x = densitySample$densityX, y = densitySample$densityY, main = "Plot of X density vs Y density")
+#ggplot(x = densitySample$densityX, y = densitySample$densityY, data = densitySample)+
+#  geom_point(mapping = aes(x = densitySample$densityX, y = densitySample$densityY))+
+#  xlim(-.05,.05)
+#  geom_point(mapping = aes(densitySample[[1]]))
+#get rid of 0s
+#proportion of 0s,want to comment on this
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#average neuron activity for each mouse used in the test data
+cori.feedback <- c()
+cori.conL <- c()
+cori.conR <- c()
+for(i in 1:3){
+  for(j in 1:length(session[[i]]$feedback_type)){
+    cori.feedback = c(cori.feedback, session[[i]]$feedback_type[[j]])
+    cori.conL <- c(cori.conL,session[[i]]$contrast_left[[j]])
+    cori.conR <- c(cori.conR,session[[i]]$contrast_right[[j]])
+  }
+}
+
+forssmann.conL <- c()
+forssmann.conR <- c()
+forssmann.feedback <- c()
+for(i in 4:7) {
+  for(j in 1:length(session[[i]]$feedback_type)){
+    forssmann.feedback = c(forssmann.feedback,session[[i]]$feedback_type[[j]])
+    forssmann.conL <- c(forssmann.conL,session[[i]]$contrast_left[[j]])
+    forssmann.conR <- c(forssmann.conR,session[[i]]$contrast_right[[j]])
+  }
+}
+
+hench.conL <- c()
+hench.conR <- c()
+hench.feedback <- c()
+for(i in 8:11){
+  for(j in 1:length(session[[i]]$feedback_type)){
+    hench.feedback = c(hench.feedback, session[[i]]$feedback_type[[j]])
+    hench.conL <- c(hench.conL,session[[i]]$contrast_left[[j]])
+    hench.conR <- c(hench.conR,session[[i]]$contrast_right[[j]])
+  }
+}
+
+lederberg.conL <- c()
+lederberg.conR <- c()
+lederberg.feedback <- c()
+for(i in 12:18){
+  for(j in 1:length(session[[i]]$feedback_type)){
+    lederberg.feedback = c(lederberg.feedback, session[[i]]$feedback_type[[j]])
+    lederberg.conL <- c(lederberg.conL,session[[i]]$contrast_left[[j]])
+    lederberg.conR <- c(lederberg.conR,session[[i]]$contrast_right[[j]])
+  }
+}
+
+#Making the differences in lengths 0
+difference.trials1 <- length(lederberg.feedback)-length(cori.feedback)
+cori.feedback <- c(cori.feedback,rep.int(NA, times = difference.trials1))
+cori.conL <- c(cori.conL,rep.int(NA, times = difference.trials1))
+cori.conR <- c(cori.conR,rep.int(NA, times = difference.trials1))
+difference.trials2 <- length(lederberg.feedback)-length(forssmann.feedback)
+forssmann.feedback <- c(forssmann.feedback,rep.int(NA, times = difference.trials2))
+forssmann.conL <- c(forssmann.conL,rep.int(NA, times = difference.trials2))
+forssmann.conR <- c(forssmann.conR,rep.int(NA, times = difference.trials2))
+difference.trials3 <- length(lederberg.feedback)-length(hench.feedback)
+hench.feedback <- c(hench.feedback,rep.int(NA, times = difference.trials3))
+hench.conL <- c(hench.conL,rep.int(NA, times = difference.trials3))
+hench.conR <- c(hench.conR,rep.int(NA, times = difference.trials3))
+
+test.mouse.feedback <- data.frame(cori.feedback,forssmann.feedback,hench.feedback,lederberg.feedback,
+                                  cori.conL,forssmann.conL,hench.conL,lederberg.conL,
+                                  cori.conR,forssmann.conR,hench.conR,lederberg.conR)
+```
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+#Mouse Feedback histograms
+#is valid, just how to use, ability of mouse to do task, may be inaccurate due to too many trials. 
+mouse.length <- length(cori.feedback)
+
+#hist(cori.feedback, main = "Histogram of Cori's Feedback", xlab = "Cori's Feedback")
+for(i in 1:4){
+  mouse.names <- c("Cori's Feedback", "Forssmann's Feedback", "Hench's Feedback", "Lederberg's Feedback")
+  hist(test.mouse.feedback[[i]], main = mouse.names[i], xlab = mouse.names[i])
+  mouse.table <-table(test.mouse.feedback[[i]])
+  barplot(mouse.table, main = mouse.names[i])
+}
+```
+
+PCA time
+```{r, echo=FALSE, result = 'hide', fig.height = 4, fig.width = 5, fig.align = "center"}
+#Format Data
+selected.vars <- c("neuron.activation.prop", "average.of.neurons", "variance.of.neurons")
+data.for.pca <- brain.area.and.neuron %>% 
+  select(all_of(selected.vars)) %>%
+  na.omit()
+
+#Perform PCA
+pca.result <- prcomp(data.for.pca, scale = TRUE)
+
+# Print the summary of the PCA
+summary(pca.result)
+
+# Access the principal components
+pca.result$rotation  # Loadings (correlations between variables and PCs)
+pca.result$x  # PC scores (transformed data)
+
+# Explained variance
+variance.explained <- pca.result$sdev^2 / sum(pca.result$sdev^2)
+cumulative.variance <- cumsum(variance.explained)
+
+# Plot the scree plot
+#scree.plot <- ggplot(data.frame(PC = 1:length(variance.explained), 
+#                                VarianceExplained = variance.explained), 
+#                     aes(x = PC, y = VarianceExplained)) +
+#  geom_bar(stat = "identity", fill = "steelblue") +
+#  geom_line(aes(x = PC, y = cumulative.variance), color = "red", size = 1) +
+#  labs(x = "Principal Components", y = "Variance Explained") +
+#  theme_minimal()
+#print(scree_plot)
+
+plot(pca.result)
+```
+
+```{r}
+# Example of a confusion matrix with two columns
+predicted <- c("A", "B", "A", "B", "B")  # Predicted values
+actual <- c("A", "A", "B", "B", "A")  # True labels
+
+# Create the confusion matrix
+confusion_matrix <- table(True = actual, Predicted = predicted)
+
+# Print the confusion matrix
+print(confusion_matrix)
+
+```
+***
+
+## Appendix {-}
+\begin{center} Appendix: R Script \end{center}
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
